@@ -226,8 +226,15 @@ class PickleballPlayerScraper:
         # Process notifications for newly assigned matches
         notifications_sent = self.process_notifications()
         
-        # Record this execution
-        self.config_manager.record_execution(len(results_urls), match_counts)
+        # Record this execution with detailed information
+        self.config_manager.record_execution(
+            matches_found=len(results_urls),
+            match_counts=match_counts,
+            court_assignments_checked=court_stats['checked'],
+            court_assignments_found=court_stats['court_assigned'],
+            notifications_sent=notifications_sent,
+            stale_matches_removed=stale_removed
+        )
         
         # Save configuration
         self.config_manager.save_config()
@@ -269,15 +276,23 @@ def main():
         # Display configuration summary
         summary = config_manager.get_match_summary()
         cleanup_summary = config_manager.get_cleanup_summary()
+        execution_summary = config_manager.get_recent_execution_summary()
         
         print("Configuration Summary:")
         print("-" * 30)
         print(f"Total matches tracked: {summary['total_matches']}")
         print(f"Future matches (no court yet): {summary['future_matches']}")
         print(f"Assigned matches (court assigned): {summary['assigned_matches']}")
-        print(f"Recent executions (last 24h): {summary['recent_executions']}")
         
-        print(f"\nCleanup Summary:")
+        print(f"\nRecent Activity (Last 24 Hours):")
+        print("-" * 35)
+        print(f"Total executions: {execution_summary['total_executions']}")
+        print(f"Active executions: {execution_summary['active_executions']}")
+        print(f"Court assignments found: {execution_summary['total_court_assignments_found']}")
+        print(f"Notifications sent: {execution_summary['total_notifications_sent']}")
+        print(f"Stale matches cleaned: {execution_summary['total_stale_removed']}")
+        
+        print(f"\nCurrent Status:")
         print("-" * 20)
         print(f"Notified matches: {cleanup_summary['notified_matches']}")
         print(f"Execution history records: {cleanup_summary['execution_history_records']}")

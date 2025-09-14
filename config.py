@@ -35,6 +35,10 @@ class ExecutionRecord:
     new_matches: int
     future_matches: int
     assigned_matches: int
+    court_assignments_checked: int = 0
+    court_assignments_found: int = 0
+    notifications_sent: int = 0
+    stale_matches_removed: int = 0
 
 
 class ConfigManager:
@@ -159,14 +163,20 @@ class ConfigManager:
             'assigned_matches': len([m for m in self.matches.values() if m.status == 'assigned'])
         }
     
-    def record_execution(self, matches_found: int, match_counts: Dict[str, int]) -> None:
+    def record_execution(self, matches_found: int, match_counts: Dict[str, int], 
+                        court_assignments_checked: int = 0, court_assignments_found: int = 0,
+                        notifications_sent: int = 0, stale_matches_removed: int = 0) -> None:
         """Record this execution in the history."""
         record = ExecutionRecord(
             timestamp=self.get_current_timestamp(),
             matches_found=matches_found,
             new_matches=match_counts['new_matches'],
             future_matches=match_counts['future_matches'],
-            assigned_matches=match_counts['assigned_matches']
+            assigned_matches=match_counts['assigned_matches'],
+            court_assignments_checked=court_assignments_checked,
+            court_assignments_found=court_assignments_found,
+            notifications_sent=notifications_sent,
+            stale_matches_removed=stale_matches_removed
         )
         
         self.execution_history.append(record)
@@ -287,4 +297,37 @@ class ConfigManager:
             'assigned_matches': len([m for m in self.matches.values() if m.status == 'assigned']),
             'notified_matches': len([m for m in self.matches.values() if m.notified]),
             'execution_history_records': len(self.execution_history)
+        }
+    
+    def get_recent_execution_summary(self, hours: int = 24) -> Dict[str, any]:
+        """Get summary of recent executions with meaningful activity."""
+        cutoff_time = datetime.now(timezone.utc).timestamp() - (hours * 3600)
+        
+        recent_executions = [
+            e for e in self.execution_history 
+            if datetime.fromisoformat(e.timestamp).timestamp() > cutoff_time
+        ]
+        
+        if not recent_executions:
+            return {
+                'total_executions': 0,
+                'active_executions': 0,
+                'total_court_assignments_found': 0,
+                'total_notifications_sent': 0,
+                'total_stale_removed': 0
+            }
+        
+        # Count executions that had meaningful activity
+        active_executions = [
+            e for e in recent_executions 
+            if (e.court_assignments_found > 0 or e.notifications_sent > 0 or 
+                e.stale_matches_removed > 0 or e.new_matches > 0)
+        ]
+        
+        return {
+            'total_executions': len(recent_executions),
+            'active_executions': len(active_executions),
+            'total_court_assignments_found': sum(e.court_assignments_found for e in recent_executions),
+            'total_notifications_sent': sum(e.notifications_sent for e in recent_executions),
+            'total_stale_removed': sum(e.stale_matches_removed for e in recent_executions)
         }
