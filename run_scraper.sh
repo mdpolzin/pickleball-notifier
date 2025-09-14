@@ -11,6 +11,15 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 # Change to the script directory
 cd "$SCRIPT_DIR"
 
+# Check if virtual environment exists
+if [ ! -d "venv" ]; then
+    echo "Error: Virtual environment not found. Please run setup first:" >&2
+    echo "  python3 -m venv venv" >&2
+    echo "  source venv/bin/activate" >&2
+    echo "  pip install -r requirements.txt" >&2
+    exit 1
+fi
+
 # Check if we're in sensible hours (8AM - 11PM Eastern Time)
 # Get current time in Eastern Time (handles both EST and EDT automatically)
 CURRENT_HOUR=$(TZ='America/New_York' date +%H)
