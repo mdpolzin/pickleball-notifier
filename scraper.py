@@ -295,6 +295,7 @@ def main():
         print(f"\nCurrent Status:")
         print("-" * 20)
         print(f"Notified matches: {cleanup_summary['notified_matches']}")
+        print(f"Potentially stale matches: {cleanup_summary['potentially_stale_matches']}")
         print(f"Execution history records: {cleanup_summary['execution_history_records']}")
         
         # Show court assignment information

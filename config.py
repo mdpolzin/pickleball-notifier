@@ -25,6 +25,7 @@ class MatchInfo:
     match_completed: Optional[str] = None
     notified: bool = False
     notification_timestamp: Optional[str] = None
+    consecutive_stale: int = 0
 
 
 @dataclass
@@ -138,8 +139,9 @@ class ConfigManager:
         for uuid in current_uuids:
             url = f"https://pickleball.com/results/match/{uuid}"
             if uuid in self.matches:
-                # Update last_seen for existing matches
+                # Update last_seen for existing matches and reset consecutive_stale
                 self.matches[uuid].last_seen = current_time
+                self.matches[uuid].consecutive_stale = 0  # Reset counter since match is found
                 existing_matches += 1
             else:
                 # Add new match
@@ -148,7 +150,8 @@ class ConfigManager:
                     url=url,
                     first_seen=current_time,
                     last_seen=current_time,
-                    status='future'
+                    status='future',
+                    consecutive_stale=0
                 )
                 new_matches += 1
         
@@ -242,6 +245,7 @@ class ConfigManager:
     def remove_stale_matches(self, current_uuids: Set[str]) -> int:
         """
         Remove matches that are no longer present on the page.
+        Uses consecutive stale counter to prevent false positives from temporary page load issues.
         
         Args:
             current_uuids: Set of UUIDs currently found on the page
@@ -255,18 +259,34 @@ class ConfigManager:
         if not stale_uuids:
             return 0
         
-        print(f"Removing {len(stale_uuids)} stale matches from configuration...")
+        # Increment consecutive_stale counter for matches not found
+        for uuid in stale_uuids:
+            self.matches[uuid].consecutive_stale += 1
         
-        # Log removed matches for debugging
+        # Only remove matches that have been stale for 10 consecutive runs
+        matches_to_remove = []
         for uuid in stale_uuids:
             match = self.matches[uuid]
-            print(f"  - Removing stale match: {uuid} (status: {match.status}, court: {match.court_title or 'none'})")
+            if match.consecutive_stale >= 10:
+                matches_to_remove.append(uuid)
         
-        # Remove stale matches
-        for uuid in stale_uuids:
+        if not matches_to_remove:
+            # Log that we're tracking stale matches but not removing them yet
+            print(f"Tracking {len(stale_uuids)} potentially stale matches (consecutive count: {min(self.matches[uuid].consecutive_stale for uuid in stale_uuids)}-{max(self.matches[uuid].consecutive_stale for uuid in stale_uuids)})")
+            return 0
+        
+        print(f"Removing {len(matches_to_remove)} confirmed stale matches from configuration...")
+        
+        # Log removed matches for debugging
+        for uuid in matches_to_remove:
+            match = self.matches[uuid]
+            print(f"  - Removing stale match: {uuid} (status: {match.status}, court: {match.court_title or 'none'}, consecutive_stale: {match.consecutive_stale})")
+        
+        # Remove confirmed stale matches
+        for uuid in matches_to_remove:
             del self.matches[uuid]
         
-        return len(stale_uuids)
+        return len(matches_to_remove)
     
     def cleanup_old_execution_history(self, max_records: int = 100) -> int:
         """
@@ -291,11 +311,14 @@ class ConfigManager:
     
     def get_cleanup_summary(self) -> Dict[str, int]:
         """Get summary of cleanup operations that could be performed."""
+        potentially_stale = [m for m in self.matches.values() if m.consecutive_stale > 0]
+        
         return {
             'total_matches': len(self.matches),
             'future_matches': len([m for m in self.matches.values() if m.status == 'future']),
             'assigned_matches': len([m for m in self.matches.values() if m.status == 'assigned']),
             'notified_matches': len([m for m in self.matches.values() if m.notified]),
+            'potentially_stale_matches': len(potentially_stale),
             'execution_history_records': len(self.execution_history)
         }
     
