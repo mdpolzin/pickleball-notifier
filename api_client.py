@@ -17,6 +17,7 @@ class MatchApiResult:
     success: bool
     court_assigned: bool
     court_title: Optional[str] = None
+    match_completed: Optional[str] = None
     error_message: Optional[str] = None
     response_data: Optional[Dict] = None
 
@@ -63,6 +64,7 @@ class PickleballApiClient:
             if 'data' in data and len(data['data']) > 0:
                 match_data = data['data'][0]
                 court_title = match_data.get('court_title', '')
+                match_completed = match_data.get('match_completed')
                 
                 # Court is assigned if court_title is not empty
                 court_assigned = bool(court_title and court_title.strip())
@@ -72,6 +74,7 @@ class PickleballApiClient:
                     success=True,
                     court_assigned=court_assigned,
                     court_title=court_title if court_assigned else None,
+                    match_completed=match_completed,
                     response_data=data
                 )
             else:
@@ -117,7 +120,8 @@ class PickleballApiClient:
             
             if result.success:
                 if result.court_assigned:
-                    print(f"  ✅ Court assigned: {result.court_title}")
+                    completion_status = " (COMPLETED)" if result.match_completed else ""
+                    print(f"  ✅ Court assigned: {result.court_title}{completion_status}")
                 else:
                     print(f"  ⏳ No court assigned yet")
             else:

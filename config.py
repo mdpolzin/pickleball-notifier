@@ -22,6 +22,7 @@ class MatchInfo:
     last_checked: Optional[str] = None
     court_assigned: bool = False
     court_title: Optional[str] = None
+    match_completed: Optional[str] = None
     notified: bool = False
     notification_timestamp: Optional[str] = None
 
@@ -196,16 +197,22 @@ class ConfigManager:
         """Get matches that need court assignment checking (future status)."""
         return [match for match in self.matches.values() if match.status == 'future']
     
-    def update_court_assignment(self, uuid: str, court_title: str, assigned: bool) -> None:
+    def update_court_assignment(self, uuid: str, court_title: str, assigned: bool, match_completed: Optional[str] = None) -> None:
         """Update court assignment information for a match."""
         if uuid in self.matches:
             self.matches[uuid].court_assigned = assigned
             self.matches[uuid].court_title = court_title if assigned else None
+            self.matches[uuid].match_completed = match_completed
             self.matches[uuid].last_checked = self.get_current_timestamp()
             
             # Update status based on court assignment
             if assigned and self.matches[uuid].status == 'future':
                 self.matches[uuid].status = 'assigned'
+            
+            # If match is completed, mark as notified to prevent future notifications
+            if match_completed:
+                self.matches[uuid].notified = True
+                self.matches[uuid].notification_timestamp = self.get_current_timestamp()
     
     def mark_as_notified(self, uuid: str) -> None:
         """Mark a match as notified."""
@@ -218,9 +225,9 @@ class ConfigManager:
         return [match for match in self.matches.values() if match.court_assigned]
     
     def get_pending_notifications(self) -> List[MatchInfo]:
-        """Get matches with court assignments that haven't been notified yet."""
+        """Get matches with court assignments that haven't been notified yet and aren't completed."""
         return [match for match in self.matches.values() 
-                if match.court_assigned and not match.notified]
+                if match.court_assigned and not match.notified and not match.match_completed]
     
     def remove_stale_matches(self, current_uuids: Set[str]) -> int:
         """

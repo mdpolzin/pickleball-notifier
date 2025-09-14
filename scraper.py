@@ -163,7 +163,8 @@ class PickleballPlayerScraper:
                 self.config_manager.update_court_assignment(
                     result.uuid, 
                     result.court_title or '', 
-                    result.court_assigned
+                    result.court_assigned,
+                    result.match_completed
                 )
                 
                 if result.court_assigned:
@@ -291,7 +292,12 @@ def main():
         if court_assigned_matches:
             print(f"\nMatches with court assignments:")
             for match in court_assigned_matches:
-                status = "✅ NOTIFIED" if match.notified else "🔔 PENDING NOTIFICATION"
+                if match.match_completed:
+                    status = "🏁 COMPLETED"
+                elif match.notified:
+                    status = "✅ NOTIFIED"
+                else:
+                    status = "🔔 PENDING NOTIFICATION"
                 print(f"  - {match.uuid}: {match.court_title} ({status})")
         
         # Show future matches (no court assigned yet)

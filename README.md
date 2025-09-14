@@ -104,11 +104,59 @@ python scraper.py
 ```
 
 
-### Automated Execution (Cron)
+### Automated Execution (Cron Job)
+
+To run the scraper automatically every minute using cron:
+
+#### 1. Get the absolute path to your project
 ```bash
-# Run every minute
-* * * * * cd /path/to/ppa_check && source venv/bin/activate && python scraper.py
+# From your project directory, get the full path
+pwd
+# Example output: /Users/michaelpolzin/Documents/code/pickleball-notifier
 ```
+
+#### 2. Test the included wrapper script
+The project includes a `run_scraper.sh` script that handles environment setup and logging:
+
+```bash
+# Test the script manually first
+./run_scraper.sh
+
+# Check if it worked
+tail -f scraper.log
+```
+
+**Note**: The script includes intelligent time filtering and will only run during sensible hours (8AM - 11PM Eastern Time). If you test it outside these hours, it will exit silently without running the scraper.
+
+#### 3. Set up the cron job
+```bash
+# Edit your crontab
+crontab -e
+
+# Add this line to run every minute (replace with your actual path):
+* * * * * /Users/michaelpolzin/Documents/code/pickleball-notifier/run_scraper.sh
+
+# Save and exit (Ctrl+X in nano, :wq in vim)
+```
+
+#### 4. Verify the cron job
+```bash
+# Check if cron job was added
+crontab -l
+
+# Monitor the log file
+tail -f scraper.log
+
+# Check cron service status (macOS)
+sudo launchctl list | grep cron
+```
+
+#### Important Notes:
+- **Replace the path**: Update `/Users/michaelpolzin/Documents/code/pickleball-notifier` with your actual project path
+- **Log file**: The script automatically redirects output to `scraper.log`
+- **Virtual environment**: The script ensures the virtual environment is activated
+- **Self-contained**: The script automatically finds its own directory
+- **Testing**: Always test the script manually before setting up the cron job
 
 
 ## Automatic Cleanup
