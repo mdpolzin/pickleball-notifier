@@ -176,10 +176,8 @@ The project includes a `rotate_logs.sh` script that uses the standard `logrotate
 
 #### Setup:
 ```bash
-# Update the logrotate config with your actual path
-# Edit pickleball-scraper.logrotate and update the path
-
-# Use the rotation script in cron:
+# The logrotate config uses relative paths - no changes needed!
+# Just use the rotation script in cron:
 0 3 * * * /path/to/rotate_logs.sh
 ```
 

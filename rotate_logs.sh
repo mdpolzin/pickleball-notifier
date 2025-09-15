@@ -30,8 +30,8 @@ if [ ! -f "scraper.log" ]; then
 fi
 
 # Use logrotate for graceful rotation
-# -d flag for dry run (remove for actual rotation)
 # -f flag to force rotation even if not due
+# Run from project directory to use relative paths in config
 logrotate -f pickleball-scraper.logrotate
 
 echo "$(date): Log rotation completed using logrotate"

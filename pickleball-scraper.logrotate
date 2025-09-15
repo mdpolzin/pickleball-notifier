@@ -1,7 +1,8 @@
 # Logrotate configuration for Pickleball Scraper
-# Place this file in /etc/logrotate.d/ or run manually with: logrotate -d pickleball-scraper.logrotate
+# This file uses relative paths and should be run from the project directory
+# Usage: logrotate -d pickleball-scraper.logrotate (from project directory)
 
-/Users/michaelpolzin/Documents/code/pickleball-notifier/scraper.log {
+scraper.log {
     daily
     rotate 7
     compress
