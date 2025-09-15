@@ -258,8 +258,8 @@ def main():
     notification_handler = NotificationHandler(config_manager)
     scraper = PickleballPlayerScraper(config_manager, api_client, notification_handler)
     
-    # Scrape Adam Harvey's page
-    player_slug = "adam-harvey"
+    # Load player slug from config
+    player_slug = notification_handler.player_slug
     print(f"Scraping tournament results for player: {player_slug}")
     
     results_urls = scraper.scrape_player_tournament_results(player_slug)

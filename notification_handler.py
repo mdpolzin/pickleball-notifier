@@ -18,6 +18,7 @@ class NotificationHandler:
     def __init__(self, config_manager: ConfigManager, bot_id: str = None):
         self.config_manager = config_manager
         self.bot_id = bot_id or self._load_bot_id()
+        self.player_slug = self._load_player_slug()
         self.groupme_api_url = "https://api.groupme.com/v3/bots/post"
         self.youtube_checker = YouTubeStreamChecker()
         
@@ -62,6 +63,40 @@ class NotificationHandler:
         except Exception as e:
             raise RuntimeError(f"Error loading bot ID from config: {e}")
     
+    def _load_player_slug(self) -> str:
+        """
+        Load the player slug from config file.
+        
+        Returns:
+            Player slug string
+            
+        Raises:
+            FileNotFoundError: If config file doesn't exist
+            KeyError: If player slug is not found in config
+        """
+        config_file = "config.json"
+        
+        if not os.path.exists(config_file):
+            raise FileNotFoundError(
+                f"Configuration file '{config_file}' not found. "
+                f"Please copy 'config.json.template' to '{config_file}' and add your configuration."
+            )
+        
+        try:
+            with open(config_file, 'r') as f:
+                config = json.load(f)
+            
+            player_slug = config.get('player', {}).get('slug')
+            if not player_slug:
+                raise KeyError("player.slug not found in config file")
+            
+            return player_slug
+            
+        except json.JSONDecodeError as e:
+            raise ValueError(f"Invalid JSON in config file: {e}")
+        except Exception as e:
+            raise RuntimeError(f"Error loading player slug from config: {e}")
+    
     def send_notification(self, match: MatchInfo) -> bool:
         """
         Send notification for a court assignment via GroupMe.
@@ -86,7 +121,8 @@ class NotificationHandler:
             response = self.session.post(self.groupme_api_url, json=payload, timeout=10)
             response.raise_for_status()
             
-            print(f"🔔 GROUPME NOTIFICATION SENT: Adam Harvey assigned to {match.court_title}")
+            player_name = self.player_slug.replace('-', ' ').title()
+            print(f"🔔 GROUPME NOTIFICATION SENT: {player_name} assigned to {match.court_title}")
             print(f"   Message: {message}")
             print(f"   Match URL: {match.url}")
             
@@ -111,15 +147,18 @@ class NotificationHandler:
         """
         court = match.court_title
 
+        # Convert slug to display name (e.g., "adam-harvey" -> "Adam Harvey")
+        player_name = self.player_slug.replace('-', ' ').title()
+        
         base_messages = [
-            f"🏓 Adam Harvey has been assigned to Court {court} and will be starting soon!",
-            f"🎾 Court {court} is ready for Adam Harvey - match starting soon!",
-            f"⚡ Adam Harvey is heading to Court {court} - get ready for some action!",
-            f"🔥 Adam Harvey has been assigned to Court {court} - the match is about to begin!",
-            f"🏆 Court {court} awaits Adam Harvey - let's see what he's got!",
-            f"💪 Adam Harvey is on Court {court} - time to show his skills!",
-            f"🚀 Adam Harvey has been assigned to Court {court} - the excitement begins now!",
-            f"⭐ Court {court} is Adam Harvey's stage - the performance starts soon!"
+            f"🏓 {player_name} has been assigned to Court {court} and will be starting soon!",
+            f"🎾 Court {court} is ready for {player_name} - match starting soon!",
+            f"⚡ {player_name} is heading to Court {court} - get ready for some action!",
+            f"🔥 {player_name} has been assigned to Court {court} - the match is about to begin!",
+            f"🏆 Court {court} awaits {player_name} - let's see what he's got!",
+            f"💪 {player_name} is on Court {court} - time to show his skills!",
+            f"🚀 {player_name} has been assigned to Court {court} - the excitement begins now!",
+            f"⭐ Court {court} is {player_name}'s stage - the performance starts soon!"
         ]
 
         # Try to check for YouTube stream with fallback

@@ -15,18 +15,19 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-3. Configure GroupMe Bot:
+3. Configure the application:
 ```bash
 # Copy the template config file
 cp config.json.template config.json
 
-# Edit config.json and add your GroupMe bot ID
-# Replace "YOUR_GROUPME_BOT_ID_HERE" with your actual bot ID
+# Edit config.json and add your configuration:
+# - Replace "YOUR_GROUPME_BOT_ID_HERE" with your actual GroupMe bot ID
+# - Update the player slug if you want to track a different player
 ```
 
 ## Usage
 
-Run the scraper to check Adam Harvey's tournament results:
+Run the scraper to check the configured player's tournament results:
 
 ```bash
 source venv/bin/activate
@@ -34,7 +35,7 @@ python scraper.py
 ```
 
 The scraper will:
-1. Fetch Adam Harvey's player page at `pickleball.com/players/adam-harvey`
+1. Fetch the configured player's page at `pickleball.com/players/{player_slug}`
 2. Find the div containing "Tournament Results"
 3. Extract only "Results" links with UUID format (`results/match/<uuid>`)
 4. Check court assignments for future matches via API
@@ -227,6 +228,9 @@ The system uses a configuration file (`config.json`) to store sensitive data lik
 {
   "groupme": {
     "bot_id": "your_groupme_bot_id_here"
+  },
+  "player": {
+    "slug": "adam-harvey"
   }
 }
 ```
@@ -234,7 +238,9 @@ The system uses a configuration file (`config.json`) to store sensitive data lik
 ### Setup Instructions
 
 1. Copy the template: `cp config.json.template config.json`
-2. Edit `config.json` and replace `YOUR_GROUPME_BOT_ID_HERE` with your actual GroupMe bot ID
+2. Edit `config.json` and:
+   - Replace `YOUR_GROUPME_BOT_ID_HERE` with your actual GroupMe bot ID
+   - Update the `player.slug` if you want to track a different player
 3. The `config.json` file is automatically ignored by git to prevent committing sensitive data
 
 ### Security Notes
