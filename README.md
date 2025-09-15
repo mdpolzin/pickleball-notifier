@@ -129,13 +129,17 @@ tail -f scraper.log
 
 **Note**: The script includes intelligent time filtering and will only run during sensible hours (8AM - 11PM Eastern Time). If you test it outside these hours, it will exit silently without running the scraper.
 
-#### 3. Set up the cron job
+#### 3. Set up the cron jobs
 ```bash
 # Edit your crontab
 crontab -e
 
-# Add this line to run every minute (replace with your actual path):
+# Add these lines (replace with your actual path):
+# Run scraper every minute
 * * * * * /Users/michaelpolzin/Documents/code/pickleball-notifier/run_scraper.sh
+
+# Rotate logs daily at 3AM Eastern
+0 * * * * /Users/michaelpolzin/Documents/code/pickleball-notifier/rotate_logs.sh
 
 # Save and exit (Ctrl+X in nano, :wq in vim)
 ```
@@ -159,6 +163,44 @@ sudo launchctl list | grep cron
 - **Self-contained**: The script automatically finds its own directory
 - **Testing**: Always test the script manually before setting up the cron job
 
+### Log Rotation
+
+The project includes a `rotate_logs.sh` script that uses the standard `logrotate` utility for proper log management:
+
+#### Features:
+- **Compression** - Old logs are compressed to save space
+- **Proper file handling** - Uses Unix standard log rotation
+- **7-day retention** - Keeps a full week of logs for debugging
+- **Better performance** - More efficient than manual rotation
+- **3AM Eastern rotation** - Only rotates logs at 3AM to avoid disrupting active monitoring
+
+#### Setup:
+```bash
+# Update the logrotate config with your actual path
+# Edit pickleball-scraper.logrotate and update the path
+
+# Use the rotation script in cron:
+0 3 * * * /path/to/rotate_logs.sh
+```
+
+#### Manual Testing:
+```bash
+# Test logrotate configuration
+logrotate -d pickleball-scraper.logrotate
+
+# Test the rotation script
+./rotate_logs.sh
+```
+
+#### Log Files:
+- **`scraper.log`** - Current day's log file
+- **`scraper.log.1.gz`** - Yesterday's compressed log file
+- **`scraper.log.2.gz`** - 2 days ago compressed log file
+- **`scraper.log.3.gz`** - 3 days ago compressed log file
+- **`scraper.log.4.gz`** - 4 days ago compressed log file
+- **`scraper.log.5.gz`** - 5 days ago compressed log file
+- **`scraper.log.6.gz`** - 6 days ago compressed log file
+- **`scraper.log.7.gz`** - 7 days ago compressed log file (oldest)
 
 ## Automatic Cleanup
 

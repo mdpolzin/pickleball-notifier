@@ -1,0 +1,16 @@
+# Logrotate configuration for Pickleball Scraper
+# Place this file in /etc/logrotate.d/ or run manually with: logrotate -d pickleball-scraper.logrotate
+
+/Users/michaelpolzin/Documents/code/pickleball-notifier/scraper.log {
+    daily
+    rotate 7
+    compress
+    delaycompress
+    missingok
+    notifempty
+    create 644 root root
+    postrotate
+        # Optional: Send signal to any processes that might have the log file open
+        # killall -USR1 python 2>/dev/null || true
+    endscript
+}
