@@ -165,29 +165,29 @@ sudo launchctl list | grep cron
 
 ### Log Rotation
 
-The project includes a `rotate_logs.sh` script that uses the standard `logrotate` utility for proper log management:
+The project includes a `rotate_logs.sh` script that provides log rotation without requiring external utilities:
 
 #### Features:
-- **Compression** - Old logs are compressed to save space
-- **Proper file handling** - Uses Unix standard log rotation
+- **No dependencies** - Works on any Unix-like system without logrotate
+- **Compression** - Old logs are compressed with gzip (if available)
 - **7-day retention** - Keeps a full week of logs for debugging
-- **Better performance** - More efficient than manual rotation
 - **3AM Eastern rotation** - Only rotates logs at 3AM to avoid disrupting active monitoring
+- **Graceful fallback** - Works even if gzip is not available
 
 #### Setup:
 ```bash
-# The logrotate config uses relative paths - no changes needed!
+# No external dependencies needed!
 # Just use the rotation script in cron:
 0 3 * * * /path/to/rotate_logs.sh
 ```
 
 #### Manual Testing:
 ```bash
-# Test logrotate configuration
-logrotate -d pickleball-scraper.logrotate
-
 # Test the rotation script
 ./rotate_logs.sh
+
+# Check if rotation worked (only works at 3AM Eastern)
+ls -la *.log*
 ```
 
 #### Log Files:
