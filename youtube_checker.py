@@ -37,7 +37,8 @@ class YouTubeStreamChecker:
         """
         try:
             # YouTube channel RSS feed URL for PPA Streamed Courts
-            rss_url = "https://www.youtube.com/feeds/videos.xml?channel_id=UCwxrKD60cB__M6nhdH0UW0w"
+            # rss_url = "https://www.youtube.com/feeds/videos.xml?channel_id=UCwxrKD60cB__M6nhdH0UW0w"
+            rss_url = "https://www.scriptbarrel.com/xml.cgi?channel_id=UCwxrKD60cB__M6nhdH0UW0w"
             
             print(f"   📡 Checking RSS feed for {court_assignment}...")
             
