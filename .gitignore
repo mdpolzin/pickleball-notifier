@@ -147,3 +147,6 @@ Thumbs.db
 # Project specific
 config.json
 scraper_config.json
+
+# Logs
+*.log.*
