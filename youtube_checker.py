@@ -60,7 +60,7 @@ class YouTubeStreamChecker:
                     # Check if this video mentions our court assignment
                     # Since RSS feeds typically only show recent/active content,
                     # finding a match here indicates it's likely a live stream
-                    if court_assignment.lower() in title_text:
+                    if f" {court_assignment} ".lower() in title_text:
                         print(f"   ✅ Found live stream in RSS: {title.text}")
                         print(f"   🎥 Live stream URL: {video_url}")
                         return {
