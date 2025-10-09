@@ -229,8 +229,10 @@ The system ensures each match gets a consistent message style and prevents dupli
 
 The system automatically checks for live YouTube streams when court assignments are detected:
 
-- **Stream Detection**: Searches `https://www.youtube.com/@PPAStreamedCourts/search?query=<court_assignment>`
-- **Live Stream Detection**: Looks for "watching" text in metadata to identify live streams
+- **RSS Feed Detection**: Uses YouTube RSS feeds for reliable, fast stream detection
+- **Extended Feed**: Accesses up to 50 recent videos from the PPA Streamed Courts channel
+- **Precise Matching**: Searches for exact court assignments with spaces (e.g., " 9 " to avoid matching "29")
+- **Live Stream Assumption**: Finding a court in the RSS feed indicates it's currently live
 - **Direct Links**: Includes full YouTube URLs when live streams are found
 - **Smart Fallback**: Falls back to PickleballTV messages when no YouTube streams are available
 - **Court-Specific Messages**:
@@ -239,11 +241,11 @@ The system automatically checks for live YouTube streams when court assignments 
 
 ### Example Messages:
 
-**With Live YouTube Stream:**
+**With Live YouTube Stream (RSS Feed Detection):**
 ```
-🏓 Adam Harvey has been assigned to Court SC5 and will be starting soon!
+🏓 Adam Harvey has been assigned to Court 9 and will be starting soon!
 
-📺 LIVE STREAM: https://www.youtube.com/watch?v=abc123def456
+📺 LIVE STREAM: https://www.youtube.com/watch?v=P_3-IzrE6vw
 ```
 
 **Without Live Stream (PickleballTV):**
@@ -256,7 +258,15 @@ The system automatically checks for live YouTube streams when court assignments 
 ⚡ Adam Harvey is heading to Court CC - get ready for some action! (free to watch on PickleballTV)
 ```
 
-The system gracefully handles YouTube API failures and always provides useful information to users.
+### Technical Details:
+
+- **RSS Feed URL**: `https://www.scriptbarrel.com/xml.cgi?channel_id=UCwxrKD60cB__M6nhdH0UW0w`
+- **Channel**: PPA Streamed Courts (up to 50 recent videos)
+- **Matching Logic**: Searches for `" {court} "` in video titles for precise matching
+- **Performance**: Fast RSS parsing without dynamic content loading delays
+- **Reliability**: No dependency on JavaScript or complex web scraping
+
+The system gracefully handles RSS feed failures and always provides useful information to users.
 
 ## Configuration
 
