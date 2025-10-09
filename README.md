@@ -22,6 +22,7 @@ cp config.json.template config.json
 
 # Edit config.json and add your configuration:
 # - Replace "YOUR_GROUPME_BOT_ID_HERE" with your actual GroupMe bot ID
+# - Add your YouTube Data API v3 key under youtube.api_key
 # - Update the player slug if you want to track a different player
 ```
 
@@ -73,6 +74,7 @@ The scraper maintains a configuration file (`scraper_config.json`) that tracks:
 - `config.py` - Configuration management system with cleanup functionality
 - `api_client.py` - API client for court assignment checking
 - `notification_handler.py` - Notification system for court assignments
+- `youtube_checker.py` - YouTube Data API v3 live stream detection and PickleballTV fallback
 - `requirements.txt` - Python dependencies
 - `scraper_config.json` - Persistent configuration storage (auto-generated)
 
@@ -227,25 +229,23 @@ The system ensures each match gets a consistent message style and prevents dupli
 
 ## YouTube Stream Integration
 
-The system automatically checks for live YouTube streams when court assignments are detected:
+The system automatically checks for live YouTube streams when court assignments are detected, using the YouTube Data API v3:
 
-- **RSS Feed Detection**: Uses YouTube RSS feeds for reliable, fast stream detection
-- **Extended Feed**: Accesses up to 50 recent videos from the PPA Streamed Courts channel
-- **Precise Matching**: Searches for exact court assignments with spaces (e.g., " 9 " to avoid matching "29")
-- **Live Stream Assumption**: Finding a court in the RSS feed indicates it's currently live
-- **Direct Links**: Includes full YouTube URLs when live streams are found
-- **Smart Fallback**: Falls back to PickleballTV messages when no YouTube streams are available
+- **Primary Detection (YouTube API)**: Queries the PPA Streamed Courts channel for live videos matching the assigned court (e.g., "court 9").
+- **Accurate Matching**: Matches against live video titles that include the court identifier.
+- **Direct Links**: Includes full YouTube URLs when a live stream is found.
+- **Smart Fallback**: If no live stream is found or an API error occurs, falls back to PickleballTV messaging.
 - **Court-Specific Messages**:
   - **CC Courts**: "free to watch on PickleballTV"
   - **Other Courts**: "on PickleballTV - login required"
 
 ### Example Messages:
 
-**With Live YouTube Stream (RSS Feed Detection):**
+**With Live YouTube Stream (API Detection):**
 ```
 🏓 Adam Harvey has been assigned to Court 9 and will be starting soon!
 
-📺 LIVE STREAM: https://www.youtube.com/watch?v=P_3-IzrE6vw
+📺 LIVE STREAM: https://www.youtube.com/watch?v=VIDEO_ID
 ```
 
 **Without Live Stream (PickleballTV):**
@@ -258,15 +258,21 @@ The system automatically checks for live YouTube streams when court assignments 
 ⚡ Adam Harvey is heading to Court CC - get ready for some action! (free to watch on PickleballTV)
 ```
 
-### Technical Details:
+### Technical Details
 
-- **RSS Feed URL**: `https://www.scriptbarrel.com/xml.cgi?channel_id=UCwxrKD60cB__M6nhdH0UW0w`
-- **Channel**: PPA Streamed Courts (up to 50 recent videos)
-- **Matching Logic**: Searches for `" {court} "` in video titles for precise matching
-- **Performance**: Fast RSS parsing without dynamic content loading delays
-- **Reliability**: No dependency on JavaScript or complex web scraping
+- **Channel ID**: `UCwxrKD60cB__M6nhdH0UW0w` (PPA Streamed Courts)
+- **API Endpoint**: `https://www.googleapis.com/youtube/v3/search`
+- **Query Parameters**: `part=snippet`, `channelId=<CHANNEL_ID>`, `eventType=live`, `type=video`, `q="court {court}"`
+- **Authentication**: Requires a YouTube Data API v3 key configured in `config.json`
+- **Rate Limiting**: Requests are throttled to avoid limits
 
-The system gracefully handles RSS feed failures and always provides useful information to users.
+### Getting a YouTube API Key
+
+1. Go to the Google Cloud Console and create/select a project.
+2. Enable the "YouTube Data API v3" for your project.
+3. Create an API key (API & Services → Credentials → Create credentials → API key).
+4. Restrict the key appropriately (optional but recommended).
+5. Add the key to `config.json` under `youtube.api_key`.
 
 ## Configuration
 
@@ -281,6 +287,9 @@ The system uses a configuration file (`config.json`) to store sensitive data lik
   },
   "player": {
     "slug": "adam-harvey"
+  },
+  "youtube": {
+    "api_key": "your_youtube_api_key_here"
   }
 }
 ```
@@ -290,6 +299,7 @@ The system uses a configuration file (`config.json`) to store sensitive data lik
 1. Copy the template: `cp config.json.template config.json`
 2. Edit `config.json` and:
    - Replace `YOUR_GROUPME_BOT_ID_HERE` with your actual GroupMe bot ID
+   - Replace `YOUR_YOUTUBE_API_KEY_HERE` with your YouTube Data API key
    - Update the `player.slug` if you want to track a different player
 3. The `config.json` file is automatically ignored by git to prevent committing sensitive data
 
@@ -298,3 +308,9 @@ The system uses a configuration file (`config.json`) to store sensitive data lik
 - Never commit `config.json` to version control
 - The template file (`config.json.template`) is safe to commit
 - Bot IDs and API keys should be kept private
+
+### Troubleshooting YouTube Integration
+
+- **Missing API Key**: If `youtube.api_key` is not set, live stream detection will fail and messages will fall back to PickleballTV text.
+- **Quota Exceeded**: If you hit YouTube API quota, detection will temporarily fail; fallback messaging remains in place.
+- **No Live Match Found**: Not all courts are streamed on YouTube at all times; absence of a link is expected in that case.
