@@ -36,8 +36,7 @@ class YouTubeStreamChecker:
             Dict with stream information
         """
         try:
-            # YouTube channel RSS feed URL for PPA Streamed Courts
-            # rss_url = "https://www.youtube.com/feeds/videos.xml?channel_id=UCwxrKD60cB__M6nhdH0UW0w"
+            # YouTube channel RSS feed URL for PPA Streamed Courts (extended feed with up to 50 videos)
             rss_url = "https://www.scriptbarrel.com/xml.cgi?channel_id=UCwxrKD60cB__M6nhdH0UW0w"
             
             print(f"   📡 Checking RSS feed for {court_assignment}...")
@@ -45,8 +44,9 @@ class YouTubeStreamChecker:
             response = self.session.get(rss_url, timeout=10)
             response.raise_for_status()
             
-            # Parse RSS XML
-            root = ET.fromstring(response.content)
+            # Clean and parse RSS XML
+            content = response.content.decode('utf-8').strip()
+            root = ET.fromstring(content)
             
             # Look for recent videos that might match our court assignment
             for entry in root.findall('.//{http://www.w3.org/2005/Atom}entry'):
