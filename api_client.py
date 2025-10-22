@@ -20,6 +20,8 @@ class MatchApiResult:
     match_completed: Optional[str] = None
     error_message: Optional[str] = None
     response_data: Optional[Dict] = None
+    partner_name: Optional[str] = None
+    opponent_names: Optional[List[str]] = None
 
 
 class PickleballApiClient:
@@ -69,13 +71,18 @@ class PickleballApiClient:
                 # Court is assigned if court_title is not empty
                 court_assigned = bool(court_title and court_title.strip())
                 
+                # Extract player names from the API response
+                partner_name, opponent_names = self._extract_player_names(match_data)
+                
                 return MatchApiResult(
                     uuid=uuid,
                     success=True,
                     court_assigned=court_assigned,
                     court_title=court_title if court_assigned else None,
                     match_completed=match_completed,
-                    response_data=data
+                    response_data=data,
+                    partner_name=partner_name,
+                    opponent_names=opponent_names
                 )
             else:
                 return MatchApiResult(
@@ -132,6 +139,59 @@ class PickleballApiClient:
                 time.sleep(self.delay_between_requests)
         
         return results
+    
+    def _extract_player_names(self, match_data: Dict) -> Tuple[Optional[str], Optional[List[str]]]:
+        """
+        Extract partner and opponent names from match data.
+        
+        Args:
+            match_data: The match data from the API response
+            
+        Returns:
+            Tuple of (partner_name, opponent_names_list)
+        """
+        partner_name = None
+        opponent_names = []
+        
+        # Look for team_X_player_Y_name fields in the match data
+        # We need to determine which team Adam is on and extract the other player from that team as partner
+        # and all players from the other team as opponents
+        
+        # First, let's find all player name fields
+        player_fields = {}
+        for key, value in match_data.items():
+            if key.startswith('team_') and key.endswith('_name') and value:
+                player_fields[key] = value
+        
+        if not player_fields:
+            return None, None
+        
+        # Determine which team Adam is on by checking if his name appears in any team
+        adam_team = None
+        for key, name in player_fields.items():
+            if name and 'adam' in name.lower():
+                # Extract team number from key like "team_1_player_1_name"
+                team_num = key.split('_')[1]
+                adam_team = team_num
+                break
+        
+        if adam_team is None:
+            return None, None
+        
+        # Extract partner (other player on Adam's team)
+        for key, name in player_fields.items():
+            if key.startswith(f'team_{adam_team}_') and key.endswith('_name') and name:
+                if 'adam' not in name.lower():
+                    partner_name = name
+                    break
+        
+        # Extract opponents (all players from the other team)
+        other_team = '2' if adam_team == '1' else '1'
+        for key, name in player_fields.items():
+            if key.startswith(f'team_{other_team}_') and key.endswith('_name') and name:
+                opponent_names.append(name)
+        
+        return partner_name, opponent_names if opponent_names else None
     
     def get_court_assigned_from_api(self, uuids: List[str]) -> List[MatchApiResult]:
         """

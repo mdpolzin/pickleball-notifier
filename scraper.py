@@ -164,7 +164,9 @@ class PickleballPlayerScraper:
                     result.uuid, 
                     result.court_title or '', 
                     result.court_assigned,
-                    result.match_completed
+                    result.match_completed,
+                    result.partner_name,
+                    result.opponent_names
                 )
                 
                 if result.court_assigned:

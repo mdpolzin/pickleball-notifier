@@ -150,15 +150,18 @@ class NotificationHandler:
         # Convert slug to display name (e.g., "adam-harvey" -> "Adam Harvey")
         player_name = self.player_slug.replace('-', ' ').title()
         
+        # Build player information string
+        player_info = self._build_player_info_string(match)
+        
         base_messages = [
-            f"🏓 {player_name} has been assigned to Court {court} and will be starting soon!",
-            f"🎾 Court {court} is ready for {player_name} - match starting soon!",
-            f"⚡ {player_name} is heading to Court {court} - get ready for some action!",
-            f"🔥 {player_name} has been assigned to Court {court} - the match is about to begin!",
-            f"🏆 Court {court} awaits {player_name} - let's see what he's got!",
-            f"💪 {player_name} is on Court {court} - time to show his skills!",
-            f"🚀 {player_name} has been assigned to Court {court} - the excitement begins now!",
-            f"⭐ Court {court} is {player_name}'s stage - the performance starts soon!"
+            f"🏓 {player_name} has been assigned to Court {court} and will be starting soon!{player_info}",
+            f"🎾 Court {court} is ready for {player_name} - match starting soon!{player_info}",
+            f"⚡ {player_name} is heading to Court {court} - get ready for some action!{player_info}",
+            f"🔥 {player_name} has been assigned to Court {court} - the match is about to begin!{player_info}",
+            f"🏆 Court {court} awaits {player_name} - let's see what he's got!{player_info}",
+            f"💪 {player_name} is on Court {court} - time to show his skills!{player_info}",
+            f"🚀 {player_name} has been assigned to Court {court} - the excitement begins now!{player_info}",
+            f"⭐ Court {court} is {player_name}'s stage - the performance starts soon!{player_info}"
         ]
 
         # Try to check for YouTube stream with fallback
@@ -185,6 +188,39 @@ class NotificationHandler:
             
             message_index = hash(match.uuid) % len(base_messages)
             return base_messages[message_index]
+    
+    def _build_player_info_string(self, match: MatchInfo) -> str:
+        """
+        Build a concise string with partner and opponent information.
+        
+        Args:
+            match: MatchInfo object with player details
+            
+        Returns:
+            Formatted string with player information or empty string if no info available
+        """
+        parts = []
+        
+        # Add partner information if available
+        if match.partner_name:
+            parts.append(f"Partner: {match.partner_name}")
+        
+        # Add opponent information if available
+        if match.opponent_names:
+            if len(match.opponent_names) == 1:
+                parts.append(f"vs {match.opponent_names[0]}")
+            elif len(match.opponent_names) == 2:
+                parts.append(f"vs {match.opponent_names[0]} & {match.opponent_names[1]}")
+            else:
+                # Handle more than 2 opponents (unusual but possible)
+                opponents_str = ", ".join(match.opponent_names[:-1]) + f" & {match.opponent_names[-1]}"
+                parts.append(f"vs {opponents_str}")
+        
+        # Return formatted string if we have any information
+        if parts:
+            return f"\n\n👥 {' | '.join(parts)}"
+        
+        return ""
     
     def process_pending_notifications(self) -> int:
         """

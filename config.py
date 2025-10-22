@@ -26,6 +26,8 @@ class MatchInfo:
     notified: bool = False
     notification_timestamp: Optional[str] = None
     consecutive_stale: int = 0
+    partner_name: Optional[str] = None
+    opponent_names: Optional[List[str]] = None
 
 
 @dataclass
@@ -210,13 +212,19 @@ class ConfigManager:
         """Get matches that need court assignment checking (future status)."""
         return [match for match in self.matches.values() if match.status == 'future']
     
-    def update_court_assignment(self, uuid: str, court_title: str, assigned: bool, match_completed: Optional[str] = None) -> None:
+    def update_court_assignment(self, uuid: str, court_title: str, assigned: bool, match_completed: Optional[str] = None, partner_name: Optional[str] = None, opponent_names: Optional[List[str]] = None) -> None:
         """Update court assignment information for a match."""
         if uuid in self.matches:
             self.matches[uuid].court_assigned = assigned
             self.matches[uuid].court_title = court_title if assigned else None
             self.matches[uuid].match_completed = match_completed
             self.matches[uuid].last_checked = self.get_current_timestamp()
+            
+            # Update player information if provided
+            if partner_name is not None:
+                self.matches[uuid].partner_name = partner_name
+            if opponent_names is not None:
+                self.matches[uuid].opponent_names = opponent_names
             
             # Update status based on court assignment
             if assigned and self.matches[uuid].status == 'future':
