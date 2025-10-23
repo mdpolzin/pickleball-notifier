@@ -153,43 +153,54 @@ class PickleballApiClient:
         partner_name = None
         opponent_names = []
         
-        # Look for team_X_player_Y_name fields in the match data
-        # We need to determine which team Adam is on and extract the other player from that team as partner
-        # and all players from the other team as opponents
-        
-        # First, let's find all player name fields
-        player_fields = {}
-        for key, value in match_data.items():
-            if key.startswith('team_') and key.endswith('_name') and value:
-                player_fields[key] = value
-        
-        if not player_fields:
-            return None, None
-        
+        # Look for team_one_player_X_name and team_two_player_X_name fields
         # Determine which team Adam is on by checking if his name appears in any team
+        
+        # Check team_one players
+        team_one_players = []
+        team_two_players = []
+        
+        # Extract team_one players
+        for player_num in ['one', 'two']:  # player_one and player_two
+            key = f'team_one_player_{player_num}_name'
+            if key in match_data:
+                name = match_data[key].strip() if match_data[key] else ''
+                if name:  # Only add non-empty names
+                    team_one_players.append(name)
+        
+        # Extract team_two players
+        for player_num in ['one', 'two']:  # player_one and player_two
+            key = f'team_two_player_{player_num}_name'
+            if key in match_data:
+                name = match_data[key].strip() if match_data[key] else ''
+                if name:  # Only add non-empty names
+                    team_two_players.append(name)
+        
+        # Determine which team Adam is on
         adam_team = None
-        for key, name in player_fields.items():
-            if name and 'adam' in name.lower():
-                # Extract team number from key like "team_1_player_1_name"
-                team_num = key.split('_')[1]
-                adam_team = team_num
-                break
+        if any('adam' in player.lower() for player in team_one_players):
+            adam_team = 'one'
+        elif any('adam' in player.lower() for player in team_two_players):
+            adam_team = 'two'
         
         if adam_team is None:
             return None, None
         
-        # Extract partner (other player on Adam's team)
-        for key, name in player_fields.items():
-            if key.startswith(f'team_{adam_team}_') and key.endswith('_name') and name:
-                if 'adam' not in name.lower():
-                    partner_name = name
+        # Extract partner and opponents based on which team Adam is on
+        if adam_team == 'one':
+            # Adam is on team_one, partner is other player on team_one, opponents are team_two
+            for player in team_one_players:
+                if 'adam' not in player.lower():
+                    partner_name = player
                     break
-        
-        # Extract opponents (all players from the other team)
-        other_team = '2' if adam_team == '1' else '1'
-        for key, name in player_fields.items():
-            if key.startswith(f'team_{other_team}_') and key.endswith('_name') and name:
-                opponent_names.append(name)
+            opponent_names = team_two_players
+        else:
+            # Adam is on team_two, partner is other player on team_two, opponents are team_one
+            for player in team_two_players:
+                if 'adam' not in player.lower():
+                    partner_name = player
+                    break
+            opponent_names = team_one_players
         
         return partner_name, opponent_names if opponent_names else None
     
