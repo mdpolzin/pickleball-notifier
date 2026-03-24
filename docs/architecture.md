@@ -16,6 +16,24 @@ This project uses a layered package structure under `pickleball_notifier/`:
 - Keep orchestration in `services`.
 - Keep reusable helper logic in `utils`.
 
+## Package Export Strategy
+
+All package `__init__.py` files use lazy exports via module-level `__getattr__`.
+
+- Prevents import-time side effects when running module entry points with `python -m ...`.
+- Keeps package imports lightweight and avoids preloading workflow modules.
+- Maintains stable public imports (for example, `from pickleball_notifier import PickleballPlayerScraper`).
+
+Current lazy-exported modules include:
+
+- `pickleball_notifier/__init__.py`
+- `pickleball_notifier/api/__init__.py`
+- `pickleball_notifier/core/__init__.py`
+- `pickleball_notifier/notifications/__init__.py`
+- `pickleball_notifier/services/__init__.py`
+- `pickleball_notifier/utils/__init__.py`
+- `pickleball_notifier/youtube/__init__.py`
+
 ## Where New Code Goes
 
 - New pickleball.com API calls or response parsing: `pickleball_notifier/api/`

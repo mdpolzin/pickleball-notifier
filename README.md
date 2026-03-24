@@ -121,6 +121,8 @@ The codebase follows a layered package layout under `pickleball_notifier/`:
 - `youtube/`: YouTube-specific stream discovery logic
 - `utils/`: shared helper utilities (for example, safe log redaction)
 
+Package exports are loaded lazily from `__init__.py` modules to avoid import-time side effects and keep `python -m ...` entrypoint behavior predictable.
+
 Primary entry point:
 
 - `make run`
@@ -215,9 +217,6 @@ crontab -l
 
 # Monitor the log file
 tail -f scraper.log
-
-# Check cron service status (macOS)
-sudo launchctl list | grep cron
 ```
 
 #### Important Notes:
