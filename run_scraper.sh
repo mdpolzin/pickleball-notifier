@@ -2,7 +2,6 @@
 #
 # Pickleball Scraper Runner Script
 # Self-healing cron wrapper:
-# - runs only during sensible hours (8AM - 11PM ET)
 # - bootstraps .venv if missing
 # - ensures project/dependencies are installed in the venv
 #
@@ -17,19 +16,6 @@ cd "$SCRIPT_DIR"
 
 PYTHON_BIN=".venv/bin/python"
 PIP_BIN=".venv/bin/pip"
-
-# Check if we're in sensible hours (8AM - 11PM Eastern Time)
-# Get current time in Eastern Time (handles both EST and EDT automatically)
-CURRENT_HOUR=$(TZ='America/New_York' date +%H)
-
-# Convert to integer for comparison
-CURRENT_HOUR=$((10#$CURRENT_HOUR))
-
-# Check if current hour is between 8 (8AM) and 22 (10PM)
-if [ $CURRENT_HOUR -lt 8 ] || [ $CURRENT_HOUR -gt 22 ]; then
-    # Outside sensible hours - exit silently
-    exit 0
-fi
 
 ensure_environment() {
     # Create venv automatically on first run.

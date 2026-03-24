@@ -193,8 +193,6 @@ The project includes a `run_scraper.sh` script that handles full environment boo
 tail -f scraper.log
 ```
 
-**Note**: The script includes intelligent time filtering and will only run during sensible hours (8AM - 11PM Eastern Time). If you test it outside these hours, it will exit silently without running the scraper.
-
 #### 3. Set up the cron jobs
 ```bash
 # Edit your crontab
