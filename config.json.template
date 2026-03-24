@@ -3,9 +3,12 @@
     "bot_id": "YOUR_GROUPME_BOT_ID_HERE"
   },
   "player": {
-    "slug": "adam-harvey"
+    "slug": "your-player-slug"
   },
   "youtube": {
     "api_key": "YOUR_YOUTUBE_API_KEY_HERE"
+  },
+  "pickleball_tv": {
+    "free_court_codes": ["CC"]
   }
 }

@@ -11,12 +11,12 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 # Change to the script directory
 cd "$SCRIPT_DIR"
 
-# Check if virtual environment exists
-if [ ! -d "venv" ]; then
+# Check if project virtual environment exists (used by Makefile targets)
+if [ ! -d ".venv" ]; then
     echo "Error: Virtual environment not found. Please run setup first:" >&2
-    echo "  python3 -m venv venv" >&2
-    echo "  source venv/bin/activate" >&2
-    echo "  pip install -r requirements.txt" >&2
+    echo "  python3 -m venv .venv" >&2
+    echo "  source .venv/bin/activate" >&2
+    echo "  pip install -e .[dev]" >&2
     exit 1
 fi
 
@@ -33,8 +33,5 @@ if [ $CURRENT_HOUR -lt 8 ] || [ $CURRENT_HOUR -gt 22 ]; then
     exit 0
 fi
 
-# Activate virtual environment
-source venv/bin/activate
-
 # Run the scraper with logging
-python scraper.py >> scraper.log 2>&1
+make run >> scraper.log 2>&1

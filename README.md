@@ -15,6 +15,11 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
+Optional (package mode):
+```bash
+pip install -e .
+```
+
 3. Configure the application:
 ```bash
 # Copy the template config file
@@ -31,8 +36,36 @@ cp config.json.template config.json
 Run the scraper to check the configured player's tournament results:
 
 ```bash
-source venv/bin/activate
-python scraper.py
+make run
+```
+
+You can also run the package module directly:
+```bash
+make run
+```
+
+## Testing
+
+Install test/lint dependencies (if needed) and run tests:
+```bash
+pip install pytest pytest-cov ruff
+pytest
+```
+
+## Make Targets
+
+You can use `make` shortcuts for common actions:
+```bash
+make install
+make run
+make lint
+make test
+make coverage
+```
+
+`make coverage` enforces a minimum of 100% coverage. Override with:
+```bash
+make coverage COV_FAIL_UNDER=98
 ```
 
 The scraper will:
@@ -59,6 +92,22 @@ The scraper will:
 - **Smart Fallback**: Gracefully falls back to PickleballTV messages when YouTube streams aren't available
 - **Race Condition Free**: Single script execution eliminates file access conflicts
 
+## Package Architecture
+
+The codebase follows a layered package layout under `pickleball_notifier/`:
+
+- `api/`: outbound API client integrations (pickleball.com result API)
+- `core/`: core state/configuration models and persistence logic
+- `notifications/`: notification orchestration and message generation
+- `services/`: application workflow services and CLI entry module
+- `youtube/`: YouTube-specific stream discovery logic
+- `utils/`: shared helper utilities (for example, safe log redaction)
+
+Primary entry point:
+
+- `make run`
+- Detailed architecture: [`docs/architecture.md`](docs/architecture.md)
+
 ## Configuration System
 
 The scraper maintains a configuration file (`scraper_config.json`) that tracks:
@@ -70,11 +119,9 @@ The scraper maintains a configuration file (`scraper_config.json`) that tracks:
 
 ## Files
 
-- `scraper.py` - Main scraper implementation with integrated API and notifications
-- `config.py` - Configuration management system with cleanup functionality
-- `api_client.py` - API client for court assignment checking
-- `notification_handler.py` - Notification system for court assignments
-- `youtube_checker.py` - YouTube Data API v3 live stream detection and PickleballTV fallback
+- `pickleball_notifier/` - Layered package (`api`, `core`, `notifications`, `services`, `youtube`, `utils`)
+- `tests/` - Test suite (currently includes smoke test stubs)
+- `pyproject.toml` - Project metadata and pytest configuration
 - `requirements.txt` - Python dependencies
 - `scraper_config.json` - Persistent configuration storage (auto-generated)
 
@@ -102,8 +149,7 @@ The scraper now includes API integration to check court assignments:
 
 ### Basic Scraping
 ```bash
-source venv/bin/activate
-python scraper.py
+make run
 ```
 
 
@@ -206,7 +252,7 @@ ls -la *.log*
 
 The system automatically prevents file bloat by:
 
-- **Removing Stale Matches**: Matches that no longer appear on Adam Harvey's page are automatically removed
+- **Removing Stale Matches**: Matches that no longer appear on the configured player's page are automatically removed
 - **Cleaning Execution History**: Keeps only the last 100 execution records
 - **Smart Detection**: Only removes matches that are truly no longer relevant
 - **Preservation**: Maintains notification status and court assignment data for active matches
@@ -221,9 +267,9 @@ The system automatically sends engaging notifications to a GroupMe group when co
 - **Bot ID**: `[REDACTED]`
 - **Message Format**: Engaging messages with emojis and variety
 - **Example Messages**:
-  - "🏓 Adam Harvey has been assigned to Court SC5 and will be starting soon!"
-  - "🚀 Adam Harvey is heading to Court GS - get ready for some action!"
-  - "⭐ Court SC8 is Adam Harvey's stage - the performance starts soon!"
+  - "🏓 Your Player has been assigned to Court SC5 and will be starting soon!"
+  - "🚀 Your Player is heading to Court GS - get ready for some action!"
+  - "⭐ Court SC8 is Your Player's stage - the performance starts soon!"
 
 The system ensures each match gets a consistent message style and prevents duplicate notifications.
 
@@ -243,19 +289,19 @@ The system automatically checks for live YouTube streams when court assignments 
 
 **With Live YouTube Stream (API Detection):**
 ```
-🏓 Adam Harvey has been assigned to Court 9 and will be starting soon!
+🏓 Your Player has been assigned to Court 9 and will be starting soon!
 
 📺 LIVE STREAM: https://www.youtube.com/watch?v=VIDEO_ID
 ```
 
 **Without Live Stream (PickleballTV):**
 ```
-🔥 Adam Harvey has been assigned to Court SC1 - the match is about to begin! (on PickleballTV - login required)
+🔥 Your Player has been assigned to Court SC1 - the match is about to begin! (on PickleballTV - login required)
 ```
 
 **CC Court (Free):**
 ```
-⚡ Adam Harvey is heading to Court CC - get ready for some action! (free to watch on PickleballTV)
+⚡ Your Player is heading to Court CC - get ready for some action! (free to watch on PickleballTV)
 ```
 
 ### Technical Details
@@ -286,10 +332,13 @@ The system uses a configuration file (`config.json`) to store sensitive data lik
     "bot_id": "your_groupme_bot_id_here"
   },
   "player": {
-    "slug": "adam-harvey"
+    "slug": "your-player-slug"
   },
   "youtube": {
     "api_key": "your_youtube_api_key_here"
+  },
+  "pickleball_tv": {
+    "free_court_codes": ["CC"]
   }
 }
 ```
