@@ -15,6 +15,11 @@ source .venv/bin/activate
 make install
 ```
 
+For a full local/dev toolchain (tests + lint), install dev extras:
+```bash
+.venv/bin/pip install -e .[dev]
+```
+
 3. Configure the application:
 ```bash
 # Copy the template config file
@@ -31,6 +36,29 @@ cp config.json.template config.json
 Run the scraper to check the configured player's tournament results:
 
 ```bash
+make run
+```
+
+### Linux deployment bootstrap
+
+For cron-based deployments, `run_scraper.sh` now bootstraps automatically on first run:
+
+- Creates `.venv` if missing
+- Upgrades `pip`, `setuptools`, and `wheel`
+- Installs project dependencies (tries `pip install -e .`, then falls back to `pip install .`)
+
+So your cron can call only:
+
+```bash
+/path/to/pickleball-notifier/run_scraper.sh
+```
+
+If you want to run manually instead of the wrapper:
+
+```bash
+python3 -m venv .venv
+.venv/bin/python -m pip install --upgrade pip setuptools wheel
+.venv/bin/pip install .  # or .venv/bin/pip install -e .
 make run
 ```
 
@@ -155,7 +183,7 @@ pwd
 ```
 
 #### 2. Test the included wrapper script
-The project includes a `run_scraper.sh` script that handles environment setup and logging:
+The project includes a `run_scraper.sh` script that handles full environment bootstrap and logging automatically:
 
 ```bash
 # Test the script manually first
@@ -197,7 +225,8 @@ sudo launchctl list | grep cron
 #### Important Notes:
 - **Replace the path**: Update `/Users/michaelpolzin/Documents/code/pickleball-notifier` with your actual project path
 - **Log file**: The script automatically redirects output to `scraper.log`
-- **Virtual environment**: The script ensures the virtual environment is activated
+- **Virtual environment**: The script creates and manages `.venv` automatically
+- **Dependencies**: The script auto-installs/repairs runtime dependencies when missing
 - **Self-contained**: The script automatically finds its own directory
 - **Testing**: Always test the script manually before setting up the cron job
 
@@ -353,3 +382,11 @@ The system uses a configuration file (`config.json`) to store sensitive data lik
 - **Missing API Key**: If `youtube.api_key` is not set, live stream detection will fail and messages will fall back to PickleballTV text.
 - **Quota Exceeded**: If you hit YouTube API quota, detection will temporarily fail; fallback messaging remains in place.
 - **No Live Match Found**: Not all courts are streamed on YouTube at all times; absence of a link is expected in that case.
+
+### Troubleshooting startup/import errors
+
+- **`ModuleNotFoundError: No module named 'requests'`**:
+  - If using cron wrapper: run `./run_scraper.sh` again and check `scraper.log` (it auto-bootstraps `.venv` and dependencies).
+  - If installing manually: run
+    - `.venv/bin/python -m pip install --upgrade pip setuptools wheel`
+    - `.venv/bin/pip install .` (or `.venv/bin/pip install -e .` when editable install is supported)

@@ -1,9 +1,13 @@
 #!/bin/bash
 #
 # Pickleball Scraper Runner Script
-# This script runs the pickleball scraper with proper environment setup
-# Only runs during sensible hours (8AM - 11PM Eastern Time)
+# Self-healing cron wrapper:
+# - runs only during sensible hours (8AM - 11PM ET)
+# - bootstraps .venv if missing
+# - ensures project/dependencies are installed in the venv
 #
+
+set -euo pipefail
 
 # Get the directory where this script is located
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
@@ -11,14 +15,8 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 # Change to the script directory
 cd "$SCRIPT_DIR"
 
-# Check if project virtual environment exists (used by Makefile targets)
-if [ ! -d ".venv" ]; then
-    echo "Error: Virtual environment not found. Please run setup first:" >&2
-    echo "  python3 -m venv .venv" >&2
-    echo "  source .venv/bin/activate" >&2
-    echo "  pip install -e .[dev]" >&2
-    exit 1
-fi
+PYTHON_BIN=".venv/bin/python"
+PIP_BIN=".venv/bin/pip"
 
 # Check if we're in sensible hours (8AM - 11PM Eastern Time)
 # Get current time in Eastern Time (handles both EST and EDT automatically)
@@ -31,6 +29,31 @@ CURRENT_HOUR=$((10#$CURRENT_HOUR))
 if [ $CURRENT_HOUR -lt 8 ] || [ $CURRENT_HOUR -gt 22 ]; then
     # Outside sensible hours - exit silently
     exit 0
+fi
+
+ensure_environment() {
+    # Create venv automatically on first run.
+    if [ ! -x "$PYTHON_BIN" ]; then
+        python3 -m venv .venv
+    fi
+
+    # Keep packaging toolchain fresh enough for pyproject/editable installs.
+    "$PYTHON_BIN" -m pip install --upgrade pip setuptools wheel
+
+    # If runtime dependencies are missing, install the project.
+    if ! "$PYTHON_BIN" -c "import requests, bs4, pickleball_notifier" >/dev/null 2>&1; then
+        # Try editable install first; if host packaging stack still rejects it, fall back to non-editable.
+        if ! "$PIP_BIN" install -e .; then
+            "$PIP_BIN" install .
+        fi
+    fi
+}
+
+if ! ensure_environment >> scraper.log 2>&1; then
+    {
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] Environment bootstrap failed"
+    } >> scraper.log
+    exit 1
 fi
 
 # Run the scraper with logging
