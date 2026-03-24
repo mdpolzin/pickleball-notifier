@@ -6,18 +6,13 @@ A web scraper to extract tournament results links from pickleball.com player pag
 
 1. Create and activate virtual environment:
 ```bash
-python3 -m venv venv
-source venv/bin/activate
+python3 -m venv .venv
+source .venv/bin/activate
 ```
 
 2. Install dependencies:
 ```bash
-pip install -r requirements.txt
-```
-
-Optional (package mode):
-```bash
-pip install -e .
+make install
 ```
 
 3. Configure the application:
@@ -39,17 +34,12 @@ Run the scraper to check the configured player's tournament results:
 make run
 ```
 
-You can also run the package module directly:
-```bash
-make run
-```
-
 ## Testing
 
-Install test/lint dependencies (if needed) and run tests:
+Run tests and lint checks:
 ```bash
-pip install pytest pytest-cov ruff
-pytest
+make test
+make lint
 ```
 
 ## Make Targets
