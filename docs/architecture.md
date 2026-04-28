@@ -54,7 +54,7 @@ flowchart TD
     notifyHandler --> ytChecker["youtube.checker.YouTubeStreamChecker"]
     apiClient --> pickleballApi["pickleball.com API"]
     ytChecker --> youtubeApi["YouTube Data API"]
-    notifyHandler --> groupmeApi["GroupMe Bot API"]
+    notifyHandler --> groupmeApi["GroupMe user topic messages (court + results)"]
 ```
 
 ## Entry Point

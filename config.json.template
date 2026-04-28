@@ -1,6 +1,7 @@
 {
   "groupme": {
-    "bot_id": "YOUR_GROUPME_BOT_ID_HERE"
+    "access_token": "YOUR_GROUPME_USER_ACCESS_TOKEN_HERE",
+    "subgroup_id": "YOUR_TOPIC_SUBGROUP_ID_HERE"
   },
   "player": {
     "slug": "your-player-slug"

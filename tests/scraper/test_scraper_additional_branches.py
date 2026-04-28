@@ -18,7 +18,7 @@ class DummyConfigManager:
     def update_matches(self, _urls):
         return {"new_matches": 0, "future_matches": 0, "assigned_matches": 0}
 
-    def get_matches_needing_court_check(self):
+    def get_match_uuids_for_status_refresh(self, page_uuids):
         return []
 
     def cleanup_old_execution_history(self):
@@ -40,6 +40,9 @@ class DummyNotificationHandler:
     player_slug = "jane-doe"
 
     def process_pending_notifications(self):
+        return 0
+
+    def process_pending_completion_notifications(self):
         return 0
 
 

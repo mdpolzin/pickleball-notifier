@@ -5,6 +5,8 @@ import re
 SENSITIVE_PATTERNS = [
     (r'([?&]key=)[^&\s]+', r'\1[REDACTED]'),
     (r'("api_key"\s*:\s*")[^"]+(")', r'\1[REDACTED]\2'),
+    (r'("access_token"\s*:\s*")[^"]+(")', r'\1[REDACTED]\2'),
+    (r'([?&]token=)[^&\s]+', r'\1[REDACTED]'),
     (r'((?:api[_-]?key|token|secret|bot_id)\s*[=:]\s*)\S+', r'\1[REDACTED]'),
 ]
 

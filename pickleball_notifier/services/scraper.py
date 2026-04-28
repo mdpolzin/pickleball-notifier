@@ -122,7 +122,9 @@ class PickleballPlayerScraper:
                     result.court_assigned,
                     result.match_completed,
                     result.partner_name,
-                    result.opponent_names
+                    result.opponent_names,
+                    result.player_won,
+                    result.game_score_lines,
                 )
                 if result.court_assigned:
                     court_assigned_count += 1
@@ -149,19 +151,20 @@ class PickleballPlayerScraper:
         stale_removed = self.config_manager.remove_stale_matches(current_uuids)
         match_counts = self.config_manager.update_matches(results_urls)
 
-        matches_needing_check = self.config_manager.get_matches_needing_court_check()
-        uuids_to_check = [match.uuid for match in matches_needing_check if match.uuid in uuids]
+        uuids_to_check = self.config_manager.get_match_uuids_for_status_refresh(current_uuids)
         court_stats = self.check_court_assignments(uuids_to_check)
 
         history_cleaned = self.config_manager.cleanup_old_execution_history()
-        notifications_sent = self.process_notifications()
+        court_notifications = self.process_notifications()
+        completion_notifications = self.notification_handler.process_pending_completion_notifications()
 
         self.config_manager.record_execution(
             matches_found=len(results_urls),
             match_counts=match_counts,
             court_assignments_checked=court_stats['checked'],
             court_assignments_found=court_stats['court_assigned'],
-            notifications_sent=notifications_sent,
+            notifications_sent=court_notifications,
+            completion_notifications_sent=completion_notifications,
             stale_matches_removed=stale_removed
         )
         self.config_manager.save_config()
@@ -170,8 +173,10 @@ class PickleballPlayerScraper:
             print(f"✅ Cleaned up {stale_removed} stale matches from configuration")
         if history_cleaned > 0:
             print(f"✅ Cleaned up {history_cleaned} old execution history records")
-        if notifications_sent > 0:
-            print(f"✅ Sent {notifications_sent} court assignment notifications")
+        if court_notifications > 0:
+            print(f"✅ Sent {court_notifications} court assignment notifications")
+        if completion_notifications > 0:
+            print(f"✅ Sent {completion_notifications} match result notification(s)")
 
         return results_urls
 

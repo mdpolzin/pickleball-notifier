@@ -103,6 +103,7 @@ def test_recent_execution_summary_branches(tmp_path) -> None:
     manager = ConfigManager(config_file=str(tmp_path / "cfg.json"))
     empty = manager.get_recent_execution_summary()
     assert empty["total_executions"] == 0
+    assert empty["total_completion_notifications_sent"] == 0
 
     now = datetime.now(timezone.utc)
     manager.execution_history = [

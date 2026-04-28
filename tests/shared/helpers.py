@@ -27,11 +27,16 @@ def build_match(
     opponent_names: Optional[List[str]] = None,
     notified: bool = False,
     match_completed: Optional[str] = None,
+    completion_notified: bool = False,
+    player_won: Optional[bool] = None,
+    game_score_lines: Optional[List[str]] = None,
+    url: Optional[str] = None,
 ) -> MatchInfo:
     """Build MatchInfo with sensible defaults for tests."""
+    resolved_url = url or f"https://pickleball.com/results/match/{uuid}"
     return MatchInfo(
         uuid=uuid,
-        url=f"https://pickleball.com/results/match/{uuid}",
+        url=resolved_url,
         first_seen="2026-01-01T00:00:00+00:00",
         last_seen="2026-01-01T00:00:00+00:00",
         status="assigned",
@@ -41,5 +46,8 @@ def build_match(
         opponent_names=opponent_names,
         notified=notified,
         match_completed=match_completed,
+        completion_notified=completion_notified,
+        player_won=player_won,
+        game_score_lines=game_score_lines,
     )
 

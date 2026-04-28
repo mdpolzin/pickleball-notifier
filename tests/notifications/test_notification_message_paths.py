@@ -9,6 +9,9 @@ class DummyConfigManager:
     def get_pending_notifications(self):
         return []
 
+    def get_pending_completion_notifications(self):
+        return []
+
     def mark_as_notified(self, _uuid: str) -> None:
         return None
 
@@ -20,7 +23,8 @@ class DummyConfigManager:
 
 
 def build_handler(monkeypatch) -> NotificationHandler:
-    monkeypatch.setattr(NotificationHandler, "_load_bot_id", lambda self: "bot-123")
+    monkeypatch.setattr(NotificationHandler, "_load_subgroup_id", lambda self: "sub-123")
+    monkeypatch.setattr(NotificationHandler, "_load_access_token", lambda self: "tok-123")
     monkeypatch.setattr(NotificationHandler, "_load_player_slug", lambda self: "jane-doe")
     return NotificationHandler(DummyConfigManager())
 
@@ -33,7 +37,8 @@ def test_create_message_uses_pickleball_tv_fallback(monkeypatch) -> None:
 
     message = handler._create_notification_message(match)
 
-    assert message.endswith(" (tv)")
+    assert " (tv)" in message
+    assert message.strip().split("\n")[-1] == f"🔗 Match URL: {match.url}"
 
 
 def test_create_message_handles_youtube_exception(monkeypatch) -> None:
@@ -44,6 +49,7 @@ def test_create_message_handles_youtube_exception(monkeypatch) -> None:
     message = handler._create_notification_message(match)
 
     assert "Court SC1" in message
+    assert f"🔗 Match URL: {match.url}" in message
 
 
 def test_build_player_info_handles_multiple_opponents(monkeypatch) -> None:

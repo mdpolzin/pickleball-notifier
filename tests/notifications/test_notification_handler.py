@@ -13,13 +13,20 @@ class DummyConfigManager:
         self.pending = pending or []
         self.court_assigned = court_assigned or self.pending
         self.marked = []
+        self.completion_marked = []
         self.saved = False
 
     def get_pending_notifications(self):
         return self.pending
 
+    def get_pending_completion_notifications(self):
+        return []
+
     def mark_as_notified(self, uuid: str) -> None:
         self.marked.append(uuid)
+
+    def mark_completion_notified(self, uuid: str) -> None:
+        self.completion_marked.append(uuid)
 
     def save_config(self) -> None:
         self.saved = True
@@ -30,21 +37,62 @@ class DummyConfigManager:
 
 def build_handler(monkeypatch, config_manager: DummyConfigManager) -> NotificationHandler:
     """Build handler with config/file reads disabled."""
-    monkeypatch.setattr(NotificationHandler, "_load_bot_id", lambda self: "bot-123")
+    monkeypatch.setattr(NotificationHandler, "_load_subgroup_id", lambda self: "sub-123")
+    monkeypatch.setattr(NotificationHandler, "_load_access_token", lambda self: "tok-123")
     monkeypatch.setattr(NotificationHandler, "_load_player_slug", lambda self: "jane-doe")
     return NotificationHandler(config_manager)
 
 
-def test_create_message_includes_live_stream(monkeypatch) -> None:
+def test_send_notification_posts_user_messages_endpoint(monkeypatch) -> None:
+    config = DummyConfigManager()
+    handler = build_handler(monkeypatch, config)
+    match = build_match()
+    last: dict = {}
+
+    def capture_post(url, **kwargs):
+        last["url"] = url
+        last["params"] = kwargs.get("params")
+        last["json"] = kwargs.get("json")
+        return DummyResponse(payload={})
+
+    monkeypatch.setattr(handler, "_create_notification_message", lambda _m: "hello")
+    monkeypatch.setattr(handler.session, "post", capture_post)
+
+    assert handler.send_notification(match) is True
+    assert last["url"] == "https://api.groupme.com/v3/groups/sub-123/messages"
+    assert last["params"] == {"token": "tok-123"}
+    assert last["json"]["message"]["text"] == "hello"
+    assert len(last["json"]["message"]["source_guid"]) > 8
+
+
+def test_create_message_includes_live_stream_and_pickleball_link(monkeypatch) -> None:
     config = DummyConfigManager()
     handler = build_handler(monkeypatch, config)
     match = build_match(opponent_names=["Opponent A"])
-    monkeypatch.setattr(handler.stream_checker, "check_court_stream", lambda _court: {"is_live": True, "stream_url": "https://yt", "error": None})
+    monkeypatch.setattr(
+        handler.stream_checker,
+        "check_court_stream",
+        lambda _court: {"is_live": True, "stream_url": "https://yt", "error": None},
+    )
 
     message = handler._create_notification_message(match)
 
     assert "LIVE STREAM: https://yt" in message
     assert "vs Opponent A" in message
+    assert f"🔗 Match URL: {match.url}" in message
+
+
+def test_create_message_includes_pickleball_link_without_live_stream(monkeypatch) -> None:
+    handler = build_handler(monkeypatch, DummyConfigManager())
+    match = build_match(uuid="aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", court_title="SC1")
+    monkeypatch.setattr(
+        handler.stream_checker,
+        "check_court_stream",
+        lambda _court: {"is_live": False, "stream_url": None, "error": None},
+    )
+    monkeypatch.setattr(handler.stream_checker, "get_pickleball_tv_message", lambda _ct: "")
+    msg = handler._create_notification_message(match)
+    assert msg.strip().split("\n")[-1] == f"🔗 Match URL: {match.url}"
 
 
 def test_send_notification_handles_request_exception(monkeypatch) -> None:
@@ -98,4 +146,5 @@ def test_notification_summary_counts_notified(monkeypatch) -> None:
     assert summary["total_court_assigned"] == 3
     assert summary["pending_notifications"] == 2
     assert summary["notifications_sent"] == 1
-
+    assert summary["pending_completion_notifications"] == 0
+    assert summary["completion_notifications_sent"] == 0

@@ -26,7 +26,7 @@ For a full local/dev toolchain (tests + lint), install dev extras:
 cp config.json.template config.json
 
 # Edit config.json and add your configuration:
-# - Replace "YOUR_GROUPME_BOT_ID_HERE" with your actual GroupMe bot ID
+# - Set groupme.access_token (user token) and groupme.subgroup_id (topic/channel id)
 # - Add your YouTube Data API v3 key under youtube.api_key
 # - Update the player slug if you want to track a different player
 ```
@@ -105,7 +105,7 @@ The scraper will:
 - **Automatic Cleanup**: Removes stale matches and old execution history to prevent file bloat
 - **Smart Court Checking**: Only checks court assignments for matches that need verification
 - **Integrated Notifications**: Automatically processes notifications for court assignments
-- **GroupMe Integration**: Sends engaging notifications to GroupMe group chat
+- **GroupMe Integration**: Sends engaging notifications to a GroupMe topic
 - **YouTube Stream Detection**: Automatically checks for live YouTube streams and includes links
 - **Smart Fallback**: Gracefully falls back to PickleballTV messages when YouTube streams aren't available
 - **Race Condition Free**: Single script execution eliminates file access conflicts
@@ -159,7 +159,7 @@ The scraper now includes API integration to check court assignments:
 - **Single Script Execution**: All processing happens in one atomic operation
 - **No Race Conditions**: Eliminates file access conflicts between separate scripts
 - **Automatic Notifications**: Court assignment notifications are processed immediately
-- **GroupMe Integration**: Posts engaging messages to GroupMe group chat
+- **GroupMe Integration**: Posts engaging messages to a GroupMe topic
 - **YouTube Stream Detection**: Checks for live streams and includes direct links
 - **Smart Fallback System**: Gracefully handles YouTube API failures
 - **Efficient Processing**: Only checks court assignments for matches that need it
@@ -277,18 +277,17 @@ This ensures the configuration file stays lean and relevant, even with long-runn
 
 ## GroupMe Notifications
 
-The system automatically sends engaging notifications to a GroupMe group when court assignments are detected:
+The system posts as a GroupMe **user** to a **topic** (subgroup). Bots cannot target topics, so the app uses the GroupMe user messages API with your access token and the topic’s subgroup id.
 
-- **API Endpoint**: `https://api.groupme.com/v3/bots/post`
-- **Bot ID**: `[REDACTED]`
-- **Message Format**: Engaging messages with emojis and variety
+- **API**: `POST https://api.groupme.com/v3/groups/{subgroup_id}/messages` (token as query parameter)
+- **subgroup_id**: For a topic, this is the topic’s id (same value you would use as the group id for that channel)
+- **Message format**: Engaging messages with emojis and variety
 - **Example Messages**:
   - "🏓 Your Player has been assigned to Court SC5 and will be starting soon!"
   - "🚀 Your Player is heading to Court GS - get ready for some action!"
   - "⭐ Court SC8 is Your Player's stage - the performance starts soon!"
 
-The system ensures each match gets a consistent message style and prevents duplicate notifications.
-
+The system ensures each match gets a consistent message style for court assignments and prevents duplicate pings. **Court assignment** messages end with **`🔗 Match URL:`** pointing at the **`results/match/<uuid>`** URL (the same match page the scraper tracks), after any live-stream or PickleballTV lines. When the pickleball.com API reports **`match_completed`**, a **follow-up topic message** summarizes the match: **won or lost** for the configured `player.slug` (from the **`winner`** field vs your team), **each game’s score** as **team-one vs team-two** (`team_one_game_one_score` … `team_five` fields), lineup text when parsed, and **`🔗 Match URL:`** with that same pickleball URL.
 ## YouTube Stream Integration
 
 The system automatically checks for live YouTube streams when court assignments are detected, using the YouTube Data API v3:
@@ -308,11 +307,15 @@ The system automatically checks for live YouTube streams when court assignments 
 🏓 Your Player has been assigned to Court 9 and will be starting soon!
 
 📺 LIVE STREAM: https://www.youtube.com/watch?v=VIDEO_ID
+
+🔗 Match URL: https://pickleball.com/results/match/<uuid>
 ```
 
 **Without Live Stream (PickleballTV):**
 ```
 🔥 Your Player has been assigned to Court SC1 - the match is about to begin! (on PickleballTV - login required)
+
+🔗 Match URL: https://pickleball.com/results/match/<uuid>
 ```
 
 **CC Court (Free):**
@@ -338,14 +341,15 @@ The system automatically checks for live YouTube streams when court assignments 
 
 ## Configuration
 
-The system uses a configuration file (`config.json`) to store sensitive data like API keys and bot IDs. This file is excluded from version control for security.
+The system uses a configuration file (`config.json`) to store sensitive data like API keys and GroupMe tokens. This file is excluded from version control for security.
 
 ### Configuration File Structure
 
 ```json
 {
   "groupme": {
-    "bot_id": "your_groupme_bot_id_here"
+    "access_token": "your_groupme_user_access_token",
+    "subgroup_id": "your_topic_subgroup_id"
   },
   "player": {
     "slug": "your-player-slug"
@@ -363,7 +367,8 @@ The system uses a configuration file (`config.json`) to store sensitive data lik
 
 1. Copy the template: `cp config.json.template config.json`
 2. Edit `config.json` and:
-   - Replace `YOUR_GROUPME_BOT_ID_HERE` with your actual GroupMe bot ID
+   - Set `groupme.access_token` to a GroupMe user access token for an account that can post in the target topic
+   - Set `groupme.subgroup_id` to the topic’s subgroup id (see GroupMe API / dev tools if you need to discover it)
    - Replace `YOUR_YOUTUBE_API_KEY_HERE` with your YouTube Data API key
    - Update the `player.slug` if you want to track a different player
 3. The `config.json` file is automatically ignored by git to prevent committing sensitive data
@@ -372,7 +377,7 @@ The system uses a configuration file (`config.json`) to store sensitive data lik
 
 - Never commit `config.json` to version control
 - The template file (`config.json.template`) is safe to commit
-- Bot IDs and API keys should be kept private
+- Access tokens and API keys should be kept private
 
 ### Troubleshooting YouTube Integration
 

@@ -27,6 +27,12 @@ def _build_scraper(monkeypatch) -> PickleballPlayerScraper:
     class DummyNotificationHandler:
         player_slug = "jane-doe"
 
+        def process_pending_notifications(self):
+            return 0
+
+        def process_pending_completion_notifications(self):
+            return 0
+
     class DummyApiClient:
         pass
 

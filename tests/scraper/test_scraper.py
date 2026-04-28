@@ -1,7 +1,5 @@
 """Unit tests for scraper logic with mocked dependencies."""
 
-from types import SimpleNamespace
-
 import requests
 from bs4 import BeautifulSoup
 from pickleball_notifier.api.client import MatchApiResult
@@ -24,8 +22,9 @@ class DummyConfigManager:
     def update_matches(self, _urls):
         return {"new_matches": 1, "future_matches": 1, "assigned_matches": 0}
 
-    def get_matches_needing_court_check(self):
-        return [SimpleNamespace(uuid="11111111-1111-1111-1111-111111111111")]
+    def get_match_uuids_for_status_refresh(self, page_uuids):
+        uid = "11111111-1111-1111-1111-111111111111"
+        return [uid] if uid in page_uuids else []
 
     def update_court_assignment(self, *args):
         self.court_updates.append(args)
@@ -63,6 +62,10 @@ class DummyNotificationHandler:
 
     def process_pending_notifications(self):
         return 2
+
+    def process_pending_completion_notifications(self):
+        return 1
+
 
 
 def build_scraper() -> PickleballPlayerScraper:
@@ -116,4 +119,5 @@ def test_scrape_player_tournament_results_updates_workflow(monkeypatch) -> None:
     assert len(scraper.config_manager.court_updates) == 1
     assert scraper.config_manager.saved is True
     assert scraper.config_manager.recorded["notifications_sent"] == 2
+    assert scraper.config_manager.recorded["completion_notifications_sent"] == 1
 

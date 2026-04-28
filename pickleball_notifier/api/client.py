@@ -12,6 +12,8 @@ import requests
 
 from pickleball_notifier.utils.logging import redact_sensitive_text
 
+_GAME_WORDS_BY_INDEX = ("one", "two", "three", "four", "five")
+
 
 @dataclass
 class MatchApiResult:
@@ -25,6 +27,8 @@ class MatchApiResult:
     response_data: Optional[Dict] = None
     partner_name: Optional[str] = None
     opponent_names: Optional[List[str]] = None
+    player_won: Optional[bool] = None
+    game_score_lines: Optional[List[str]] = None
 
 
 class PickleballApiClient:
@@ -34,7 +38,7 @@ class PickleballApiClient:
         self,
         base_url: str = "https://pickleball.com",
         delay_between_requests: float = 0.5,
-        monitored_player_slug: Optional[str] = None
+        monitored_player_slug: Optional[str] = None,
     ):
         self.base_url = base_url
         self.delay_between_requests = delay_between_requests
@@ -42,14 +46,17 @@ class PickleballApiClient:
         self.session = requests.Session()
 
         self.session.headers.update({
-            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+            'User-Agent': (
+                'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 '
+                '(KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            ),
             'Accept': 'application/json, text/plain, */*',
             'Accept-Language': 'en-US,en;q=0.9',
             'Accept-Encoding': 'gzip, deflate, br',
             'Connection': 'keep-alive',
             'Sec-Fetch-Dest': 'empty',
             'Sec-Fetch-Mode': 'cors',
-            'Sec-Fetch-Site': 'same-origin'
+            'Sec-Fetch-Site': 'same-origin',
         })
 
     def get_match_info(self, uuid: str) -> MatchApiResult:
@@ -67,6 +74,15 @@ class PickleballApiClient:
                 match_completed = match_data.get('match_completed')
                 court_assigned = bool(court_title and court_title.strip())
                 partner_name, opponent_names = self._extract_player_names(match_data)
+                monitored_team = self._resolve_monitored_team(match_data)
+
+                player_won: Optional[bool] = None
+                game_lines: Optional[List[str]] = None
+                if match_completed:
+                    player_won = self._infer_player_won(
+                        monitored_team, match_data.get('winner'))
+                    parsed = self._parse_game_lines(match_data)
+                    game_lines = parsed if parsed else None
 
                 return MatchApiResult(
                     uuid=uuid,
@@ -76,14 +92,16 @@ class PickleballApiClient:
                     match_completed=match_completed,
                     response_data=data,
                     partner_name=partner_name,
-                    opponent_names=opponent_names
+                    opponent_names=opponent_names,
+                    player_won=player_won,
+                    game_score_lines=game_lines,
                 )
 
             return MatchApiResult(
                 uuid=uuid,
                 success=False,
                 court_assigned=False,
-                error_message="No data found in API response"
+                error_message="No data found in API response",
             )
 
         except requests.RequestException as exc:
@@ -91,14 +109,14 @@ class PickleballApiClient:
                 uuid=uuid,
                 success=False,
                 court_assigned=False,
-                error_message=f"Request failed: {str(exc)}"
+                error_message=f"Request failed: {str(exc)}",
             )
         except (KeyError, IndexError, ValueError) as exc:
             return MatchApiResult(
                 uuid=uuid,
                 success=False,
                 court_assigned=False,
-                error_message=f"Data parsing error: {str(exc)}"
+                error_message=f"Data parsing error: {str(exc)}",
             )
 
     def check_multiple_matches(self, uuids: List[str]) -> List[MatchApiResult]:
@@ -123,10 +141,8 @@ class PickleballApiClient:
 
         return results
 
-    def _extract_player_names(self, match_data: Dict) -> Tuple[Optional[str], Optional[List[str]]]:
-        """Extract partner and opponent names from match data."""
-        partner_name = None
-        opponent_names: List[str] = []
+    def _collect_team_lists(self, match_data: Dict) -> Tuple[List[str], List[str]]:
+        """Build team one / team two roster name lists."""
         team_one_players: List[str] = []
         team_two_players: List[str] = []
 
@@ -143,6 +159,70 @@ class PickleballApiClient:
                 name = match_data[key].strip() if match_data[key] else ''
                 if name:
                     team_two_players.append(name)
+
+        return team_one_players, team_two_players
+
+    def _resolve_monitored_team(self, match_data: Dict) -> Optional[str]:
+        """Which side ('one'/'two') the slug-matched monitored player sits on."""
+        team_one_players, team_two_players = self._collect_team_lists(match_data)
+        if any(self._name_matches_monitored_player(p) for p in team_one_players):
+            return 'one'
+        if any(self._name_matches_monitored_player(p) for p in team_two_players):
+            return 'two'
+        return None
+
+    def _infer_player_won(
+        self,
+        monitored_team: Optional[str],
+        winner_raw: Optional[object],
+    ) -> Optional[bool]:
+        """Map API winner (1 = team one, 2 = team two) vs monitored player's team."""
+        if monitored_team not in {'one', 'two'}:
+            return None
+        wins = self._coerce_team_winner_digit(winner_raw)
+        if wins is None:
+            return None
+        if wins == 1:
+            return monitored_team == 'one'
+        return monitored_team == 'two'
+
+    def _parse_game_lines(self, match_data: Dict) -> List[str]:
+        """One readable line per played game: team one score first, team two second."""
+        lines: List[str] = []
+        for idx, word in enumerate(_GAME_WORDS_BY_INDEX):
+            game_idx = idx + 1
+            s1 = self._score_to_int(match_data.get(f'team_one_game_{word}_score'))
+            s2 = self._score_to_int(match_data.get(f'team_two_game_{word}_score'))
+            if s1 == 0 and s2 == 0:
+                continue
+            lines.append(f"Game {game_idx}: {s1}-{s2}")
+        return lines
+
+    @staticmethod
+    def _score_to_int(raw: Optional[object]) -> int:
+        if raw is None or raw == '':
+            return 0
+        try:
+            return int(round(float(raw)))
+        except (TypeError, ValueError):
+            return 0
+
+    @staticmethod
+    def _coerce_team_winner_digit(raw: Optional[object]) -> Optional[int]:
+        """Winner is 1 = team one, 2 = team two in observed API payloads."""
+        if raw is None or raw == '':
+            return None
+        try:
+            v = int(raw)
+            return v if v in (1, 2) else None
+        except (TypeError, ValueError):
+            return None
+
+    def _extract_player_names(self, match_data: Dict) -> Tuple[Optional[str], Optional[List[str]]]:
+        """Extract partner and opponent names from match data."""
+        partner_name = None
+        opponent_names: List[str] = []
+        team_one_players, team_two_players = self._collect_team_lists(match_data)
 
         monitored_team = None
         if any(self._name_matches_monitored_player(player) for player in team_one_players):
@@ -181,4 +261,3 @@ class PickleballApiClient:
         """Get only matches that have been assigned to a court from API calls."""
         all_results = self.check_multiple_matches(uuids)
         return [result for result in all_results if result.success and result.court_assigned]
-

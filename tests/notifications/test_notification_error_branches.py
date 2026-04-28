@@ -11,10 +11,9 @@ class DummyConfigManager:
     def get_pending_notifications(self):
         return []
 
-    def mark_as_notified(self, _uuid: str) -> None:
-        return None
+    def get_pending_completion_notifications(self):
+        return []
 
-    def save_config(self) -> None:
         return None
 
     def get_court_assigned_matches(self):
@@ -22,7 +21,8 @@ class DummyConfigManager:
 
 
 def _build_handler(monkeypatch) -> NotificationHandler:
-    monkeypatch.setattr(NotificationHandler, "_load_bot_id", lambda self: "bot-123")
+    monkeypatch.setattr(NotificationHandler, "_load_subgroup_id", lambda self: "sub-123")
+    monkeypatch.setattr(NotificationHandler, "_load_access_token", lambda self: "tok-123")
     monkeypatch.setattr(NotificationHandler, "_load_player_slug", lambda self: "jane-doe")
     return NotificationHandler(DummyConfigManager())
 
@@ -59,7 +59,10 @@ def test_load_methods_handle_invalid_json(tmp_path, monkeypatch) -> None:
     handler = NotificationHandler.__new__(NotificationHandler)
 
     with pytest.raises(ValueError):
-        handler._load_bot_id()
+        handler._load_subgroup_id()
+
+    with pytest.raises(ValueError):
+        handler._load_access_token()
 
     with pytest.raises(ValueError):
         handler._load_player_slug()

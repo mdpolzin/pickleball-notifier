@@ -28,6 +28,9 @@ class MatchInfo:
     consecutive_stale: int = 0
     partner_name: Optional[str] = None
     opponent_names: Optional[List[str]] = None
+    completion_notified: bool = False
+    player_won: Optional[bool] = None
+    game_score_lines: Optional[List[str]] = None
 
 
 @dataclass
@@ -41,6 +44,7 @@ class ExecutionRecord:
     court_assignments_checked: int = 0
     court_assignments_found: int = 0
     notifications_sent: int = 0
+    completion_notifications_sent: int = 0
     stale_matches_removed: int = 0
 
 
@@ -72,6 +76,11 @@ class ConfigManager:
                 elif match_data.get('status') == 'unknown':
                     match_data['status'] = 'future'
 
+                match_data.setdefault('completion_notified', False)
+                match_data.setdefault('player_won', None)
+                match_data.setdefault('game_score_lines', None)
+                match_data.pop('assignment_notice_groupme_url', None)
+
                 self.matches[uuid] = MatchInfo(**match_data)
 
             # Load execution history
@@ -85,11 +94,13 @@ class ConfigManager:
                         'matches_found': record_data['matches_found'],
                         'new_matches': record_data['new_matches'],
                         'future_matches': record_data.get('unknown_matches', 0),
-                        'assigned_matches': record_data.get('completed_matches', 0)
+                        'assigned_matches': record_data.get('completed_matches', 0),
+                        'completion_notifications_sent': 0,
                     }
                     self.execution_history.append(ExecutionRecord(**new_record_data))
                 else:
                     # New format
+                    record_data.setdefault('completion_notifications_sent', 0)
                     self.execution_history.append(ExecutionRecord(**record_data))
 
         except (json.JSONDecodeError, KeyError, TypeError) as e:
@@ -172,6 +183,7 @@ class ConfigManager:
         court_assignments_checked: int = 0,
         court_assignments_found: int = 0,
         notifications_sent: int = 0,
+        completion_notifications_sent: int = 0,
         stale_matches_removed: int = 0
     ) -> None:
         """Record this execution in the history."""
@@ -184,6 +196,7 @@ class ConfigManager:
             court_assignments_checked=court_assignments_checked,
             court_assignments_found=court_assignments_found,
             notifications_sent=notifications_sent,
+            completion_notifications_sent=completion_notifications_sent,
             stale_matches_removed=stale_matches_removed
         )
 
@@ -217,6 +230,25 @@ class ConfigManager:
         """Get matches that need court assignment checking (future status)."""
         return [match for match in self.matches.values() if match.status == 'future']
 
+    def get_match_uuids_for_status_refresh(self, current_page_uuids: Set[str]) -> List[str]:
+        """Match UUIDs still on the player's page that need pickleball.com API polls.
+
+        Polls futures awaiting court assignment, and assigned matches awaiting completion."""
+        refreshed: List[str] = []
+        for match in self.matches.values():
+            if match.uuid not in current_page_uuids:
+                continue
+            if match.status == 'future':
+                refreshed.append(match.uuid)
+                continue
+            if (
+                match.status == 'assigned'
+                and match.court_assigned
+                and not match.match_completed
+            ):
+                refreshed.append(match.uuid)
+        return refreshed
+
     def update_court_assignment(
         self,
         uuid: str,
@@ -224,7 +256,9 @@ class ConfigManager:
         assigned: bool,
         match_completed: Optional[str] = None,
         partner_name: Optional[str] = None,
-        opponent_names: Optional[List[str]] = None
+        opponent_names: Optional[List[str]] = None,
+        player_won: Optional[bool] = None,
+        game_score_lines: Optional[List[str]] = None,
     ) -> None:
         """Update court assignment information for a match."""
         if uuid in self.matches:
@@ -238,6 +272,9 @@ class ConfigManager:
                 self.matches[uuid].partner_name = partner_name
             if opponent_names is not None:
                 self.matches[uuid].opponent_names = opponent_names
+
+            self.matches[uuid].player_won = player_won
+            self.matches[uuid].game_score_lines = game_score_lines
 
             # Update status based on court assignment
             if assigned and self.matches[uuid].status == 'future':
@@ -253,6 +290,18 @@ class ConfigManager:
         if uuid in self.matches:
             self.matches[uuid].notified = True
             self.matches[uuid].notification_timestamp = self.get_current_timestamp()
+
+    def mark_completion_notified(self, uuid: str) -> None:
+        """Mark a match as notified with its final result."""
+        if uuid in self.matches:
+            self.matches[uuid].completion_notified = True
+
+    def get_pending_completion_notifications(self) -> List[MatchInfo]:
+        """Matches with completion data present that have not been posted yet."""
+        return [
+            match for match in self.matches.values()
+            if match.match_completed and not match.completion_notified
+        ]
 
     def get_court_assigned_matches(self) -> List[MatchInfo]:
         """Get all matches that have been assigned to a court."""
@@ -345,6 +394,7 @@ class ConfigManager:
                 'active_executions': 0,
                 'total_court_assignments_found': 0,
                 'total_notifications_sent': 0,
+                'total_completion_notifications_sent': 0,
                 'total_stale_removed': 0
             }
 
@@ -353,6 +403,7 @@ class ConfigManager:
             if (
                 e.court_assignments_found > 0
                 or e.notifications_sent > 0
+                or e.completion_notifications_sent > 0
                 or e.stale_matches_removed > 0
                 or e.new_matches > 0
             )
@@ -363,6 +414,7 @@ class ConfigManager:
             'active_executions': len(active_executions),
             'total_court_assignments_found': sum(e.court_assignments_found for e in recent_executions),
             'total_notifications_sent': sum(e.notifications_sent for e in recent_executions),
+            'total_completion_notifications_sent': sum(e.completion_notifications_sent for e in recent_executions),
             'total_stale_removed': sum(e.stale_matches_removed for e in recent_executions)
         }
 
